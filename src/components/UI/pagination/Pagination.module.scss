@@ -1,0 +1,8 @@
+.page__wrapper {
+	display: flex; margin-top: 10px;
+	> .page {
+		padding: 10px; border: 1px solid teal; cursor: pointer;
+		&.active { border-color: darkred; }
+		&:not(:first-child) { margin-left: 5px; }
+	}
+}

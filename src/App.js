@@ -1,29 +1,39 @@
-import React, {useMemo, useState} from 'react';
-import './styles/styles.css';
-import PostForm from './components/PostForm';
-import PostList from './components/PostList';
-import PostFilter from './components/PostFilter';
-import MyModal from "./components/UI/MyModal/MyModal";
-import MyButton from "./components/UI/button/MyButton";
+import React, {useEffect, useState} from 'react';
+import 						'./styles/styles.css';
+import PostForm from 		'./components/PostForm';
+import PostList from 		'./components/PostList';
+import PostFilter from 		'./components/PostFilter';
+import MyModal from 		'./components/UI/MyModal/MyModal';
+import MyButton from 		'./components/UI/button/MyButton';
+import Loader from 			'./components/UI/loader/Loader';
+import Pagination from 		'./components/UI/pagination/Pagination';
+import PostsService from 	'./API/PostsService';
+import {usePosts} from 		'./hooks/usePosts';
+import {useFetching} from 	'./hooks/useFetching';
+import {getPageCount} from 	'./utils/pages';
 
 function App() {
-	const [posts, setPosts] = useState([
-		{id: 1, title: 'JavaScript 1', description: 'JavaScript 2 - язык программирования'},
-		{id: 2, title: 'JavaScript 3', description: 'JavaScript 3 - язык программирования'},
-		{id: 3, title: 'JavaScript 5', description: 'JavaScript 5 - язык программирования'},
-		{id: 4, title: 'JavaScript 2', description: 'JavaScript 4 - язык программирования'},
-		{id: 5, title: 'JavaScript 4', description: 'JavaScript 1 - язык программирования'}
-	]);
+	const [posts, setPosts] = useState([]);
 	const [filter, setFilter] = useState({sort: '', query: ''});
 	const [modal, setModal] = useState(false);
+	const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query);
+	const [totalPages, setTotalPages] = useState(0);
+	const [page, setPage] = useState(1);
+	const [limit, setLimit] = useState(10);
+	const [fetchPosts, isPostsLoading, postError] = useFetching(async () => {
+		const response = await PostsService.getAll(page, limit);
+		setPosts(response.data);
+		const totalCount = response.headers['x-total-count'];
+		setTotalPages(getPageCount(totalCount, limit));getPageCount()
+	});
 
-	const sortedPosts = useMemo(() => {
-		return filter.sort ? [...posts].sort((a, b) => a[filter.sort].localeCompare(b[filter.sort])) : posts;
-	}, [filter.sort, posts]);
+	const changePage = page => {
+		setPage(page);
+	}
 
-	const sortedAndSearchedPosts = useMemo(() => {
-		return sortedPosts.filter(post => post.title.toLowerCase().includes(filter.query.toLowerCase()));
-	}, [filter.query, sortedPosts]);
+	useEffect(() => {
+		fetchPosts();
+	}, [page]);
 
 	const createPost = newPost => {
 		setPosts([...posts, newPost]);
@@ -41,7 +51,15 @@ function App() {
 				<PostForm create = {createPost}/>
 			</MyModal>
 			<PostFilter filter = {filter} setFilter = {setFilter}/>
-			<PostList remove = {removePost} posts = {sortedAndSearchedPosts} title = 'Список постов про JS'/>
+			{
+				postError && <h1>Произошла ошибка {postError}</h1>
+			}
+			{
+				isPostsLoading
+				? <div style = {{display: 'flex', justifyContent: 'center', marginTop: '50px'}}><Loader/></div>
+				: <PostList remove = {removePost} posts = {sortedAndSearchedPosts} title = 'Список постов про JS'/>
+			}
+			<Pagination page = {page} changePage = {changePage} totalPages = {totalPages}/>
 		</div>
 	);
 }
